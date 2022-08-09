@@ -9,7 +9,7 @@ const mongodb = require('./src/database/mongodb'); //importa o arquivo de conexa
 mongodb();//inicializa a conexao com o mongoDB
 
 const UsersRoutes = require('./src/routes/usersRoutes');
-//meu servidor vai usar as configuracoes do cors
+//meu servidor vai usar as configuracoes do corsgygyig
 server.use(cors(
     {//configuracoes do cors
         origin: '*',
@@ -17,7 +17,7 @@ server.use(cors(
         allowedHeaders: ['Content-Type']
     }
 ));
-//requisicoes serao convertidas ou comparadas em json
+//requisicoes serao convertidas ou comparadas em jsonhuih
 server.use(express.json());
 //o body das requisicoes devem estar no padrao urlencoded
 server.use(express.urlencoded({extended: true}));
