@@ -22,8 +22,8 @@ server.use(express.json());
 //o body das requisicoes devem estar no padrao urlencoded
 server.use(express.urlencoded({extended: true}));
 //definindo as rotas a partir do '/'
-server.use('/', ApiRoutes); 
-server.use('/user', UsersRoutes); 
+//server.use('/', ApiRoutes); 
+server.use('/', UsersRoutes); 
 
 //inicializando o servidro para escutar na porta definida no arquivo .env
 server.listen(process.env.PORT, () => {

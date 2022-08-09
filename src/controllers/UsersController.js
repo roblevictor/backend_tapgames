@@ -1,35 +1,77 @@
 const mongoose = require('mongoose');
 const Users = require('../models/Users'); //importando o modelo de Users
+const bcrypt = require('bcrypt');
 
 module.exports = {
-    add: async (req, res) => {
-        const {avatar, nome, nick, email, passwordHash, score, ranking} = req.body;
-        console.log("aqui")
+    signup: async (req, res) => {
+        const {avatar, nome, nick, email, password, score, ranking} = req.body;
+
+        const userExist = await Users.findOne({email});//verificamos se existe email cadastrado
+        if(userExist){//se existir retorna usuario invalido e para aa execução
+            res.json({
+                data:[],
+                error: 'usuario invalido'
+            });
+            return;//encerrra a execução
+        }
+
+        const passwordHash = await bcrypt.hash(password, 10);
+
+
+       
         let addUser = new Users({avatar, nome, nick, email, passwordHash, score, ranking});
         const saveUsers = await addUser.save();
         if(!saveUsers) {
             res.json({
                 error: 'Erro ao adicionar User'
             });
-        }else {
+            return;
+        } 
             res.json({
                 data: saveUsers
             });
-        }
-    },
-    list: async(req, res) => {
-        const listUsers = await Users.find();
-        if(!listUsers){
-            res.json({
-                error: 'Erro ao recuperar os registros'
-            });
-        }else {
-            res.json({
-                data: listUsers
-            })
-        }
         
     },
+    signin: async (req, res)=>{
+        const {email, password}= req.body;
+        const userExist = await Users.findOne({email});
+        if(!userExist){
+            res.json({
+                data:[],
+                email: "usuario invalido"
+            });
+            return;
+        }
+        const match = await bcrypt.compare(password, userExist.passwordHash);
+        if(!match) {
+            res.json({
+                data:[],
+                error:'credential invalida'
+            });
+            return;
+        }
+        res.json({
+            data: userExist
+        });
+    },
+
+    ranking: async(req, res) => {
+      const rankingList = await Users.find({ranking: {$gt: 0}, score: {$ne: 0}})
+      .sort({ranking: 1})
+      .limit(10)
+      .select({
+        ranking: 1,
+        avatar: 1,
+        nick: 1,
+        score: 1,
+        _id: 0
+      }).exec();
+      res.json({
+        data: rankingList
+      });
+        
+    },
+    /*
     getId: async(req, res) => {
         const id = req.params.id;
         const listUsers = await Users.findById(id);
@@ -55,22 +97,64 @@ module.exports = {
                 data: listUsers
             })
         }
-    },
+    },*/
+    
     updateId: async(req, res) => {
         const id = req.params.id;
-        const {avatar, nome, nick, email, passwordHash, score, ranking} = req.body;
+        const {avatar, nome, nick, email} = req.body;
 
-        const UserUpdate = await Users.findByIdAndUpdate(id, {avatar, nome, nick, email, passwordHash, score, ranking});
+        const userUpdate = await Users.findByIdAndUpdate(id, {avatar, nome, nick, email});
 
-        if(!UserUpdate) {
+        if(!userUpdate) {
             res.json({
+                data: [],
                 erro: 'Não foi possivel localizar o User'
             });
         } else {
             res.json({
-                data:UserUpdate
+                data:userUpdate
             });
         }
+    },
+
+    score: async(req, res)=> {
+        const nick = req.params.nick;
+        const novoScore = req.params.score;
+        const user = await Users.findOne({nick});
+
+        if(!user){
+            res.json({
+                data:[],
+                error: 'usuario invalido'
+            });
+            return;
+        }
+        const id= user._id;
+        const scoreAtual = user.score;
+
+        if(novoScore > scoreAtual){
+            await Users.findByIdAndUpdate(id, {score:novoScore});
+            const geraRanking = await Users.aggregate([
+                {
+                    $setWindowFields: {
+                        sortBy: {score: -1},
+                        output: {
+                            ranking: {
+                                $rank: {}
+                            }
+                        }
+                    }
+                }
+            ]).exec();
+            geraRanking.map(user => {
+                Users.updateOne({_id: user._id}, {ranking: user.ranking}).exec();
+            });
+            
+        }
+        res.json({
+            data: [],
+            msg: 'Score alterado com sucesso'
+        })
     }
 
 }
